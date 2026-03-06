@@ -77,14 +77,18 @@
 
 <div id="signup-modal" class="modal">
     <h2>ENLIST PILOT</h2>
-    <p style="color: #fff; font-size: 0.6rem;">?</p>
-    <button class="auth-btn" onclick="closeModals()">CLOSE</button>
+    <input type="text" id="su-user" placeholder="NAME" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
+    <input type="password" id="su-pass" placeholder="PASS" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
+    <button class="auth-btn" onclick="handleSignUp()">READY</button>
+    <button class="auth-btn" onclick="closeModals()">CANCEL</button>
 </div>
 
 <div id="login-modal" class="modal">
     <h2>IDENTIFY</h2>
-    <p style="color: #fff; font-size: 0.6rem;">?</p>
-    <button class="auth-btn" onclick="closeModals()">CLOSE</button>
+    <input type="text" id="li-user" placeholder="NAME" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
+    <input type="password" id="li-pass" placeholder="PASS" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
+    <button class="auth-btn" onclick="handleLogin()">ENTER</button>
+    <button class="auth-btn" onclick="closeModals()">CANCEL</button>
 </div>
 
 <div id="leaderboard-modal" class="terminal-window">
@@ -117,15 +121,42 @@ function preload() {
 
 /*create game UI*/
 function create() {
-    // Spawns the player ship
+    //hitbox
     player = this.physics.add.sprite(config.width/2, config.height/2, 'ship').setScale(0.06);
-    
-
+    player.setSize(player.width - 40, player.height - 40).setOffset(20, 0); 
 }
 
 
 function update() {
+    //ship follows cursor
+    let pointer = this.input.activePointer;
+    let targetAngle = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y) + Math.PI/2;
+    player.rotation = Phaser.Math.Angle.RotateTo(player.rotation, targetAngle, 0.12);
+}
 
+// --- AUTHENTICATION LOGIC (New for Dev Branch) ---
+
+async function handleSignUp() {
+    const u = document.getElementById('su-user').value;
+    const p = document.getElementById('su-pass').value;
+    await _supabase.from('leaderboards').insert([{ username: u, password: p, high_score: 0 }]);
+    alert("ENLISTED! NOW LOGIN.");
+    closeModals();
+}
+
+async function handleLogin() {
+    const u = document.getElementById('li-user').value;
+    const p = document.getElementById('li-pass').value;
+    const { data } = await _supabase.from('leaderboards').select('*').eq('username', u).eq('password', p).maybeSingle();
+    
+    if(data) {
+        currentUser = u;
+        document.getElementById('main-play-btn').disabled = false;
+        document.getElementById('main-play-btn').innerText = "PROCEED PILOT: " + u;
+        closeModals();
+    } else {
+        alert("ACCESS DENIED");
+    }
 }
 
 //popup functions
