@@ -101,40 +101,59 @@
 
 /*databse connection*/
 const _supabase = supabase.createClient('https://dqbtnmkiiwldlvrpaupj.supabase.co', 'sb_publishable_rMEMOFO_vVHyYdpjJQSqxg_djkgWVVT');
-let currentUser = null; 
+let currentUser = null;
 let isPaused = true; //prevents game from running in the menu
+let missiles;
 
 /*phaser eng config*/
 const config = { 
-    type: Phaser.AUTO, 
-    width: window.innerWidth, 
-    height: window.innerHeight, 
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
     physics: { default: 'arcade', arcade: { debug: false } }, 
-    scene: { preload, create, update } 
+    scene: { preload, create, update }
 };
 const game = new Phaser.Game(config);
 
 /*assets*/
 function preload() {
-    this.load.image('ship', 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Space-Invaders-ship.png'); 
+    this.load.image('ship', 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Space-Invaders-ship.png');
 }
 
 /*create game UI*/
 function create() {
     //hitbox
-    player = this.physics.add.sprite(config.width/2, config.height/2, 'ship').setScale(0.06);
+    player = this.physics.add.sprite(config.width/2, config.height/2, 'ship').setScale(0.06).setDepth(10);
     player.setSize(player.width - 40, player.height - 40).setOffset(20, 0); 
-}
 
+    //missile groups
+    missiles = this.physics.add.group();
+
+    //missile to missile explosion
+    this.physics.add.collider(missiles, missiles, (m1, m2) => {
+        m1.destroy();
+        m2.destroy();
+    }, null, this);
+}
 
 function update() {
     //ship follows cursor
     let pointer = this.input.activePointer;
     let targetAngle = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y) + Math.PI/2;
     player.rotation = Phaser.Math.Angle.RotateTo(player.rotation, targetAngle, 0.12);
-}
 
-// --- AUTHENTICATION LOGIC (New for Dev Branch) ---
+    if (isPaused) return; //stop enemies if menu is open
+
+    //missile Tracking
+    missiles.getChildren().forEach(m => {
+        //calculate angle to the player
+        let angle = Phaser.Math.Angle.Between(m.x, m.y, player.x, player.y) + Math.PI/2;
+        //missile rotation
+        m.rotation = Phaser.Math.Angle.RotateTo(m.rotation, angle, 0.01); 
+        //move missile forward
+        this.physics.velocityFromRotation(m.rotation - Math.PI/2, 480, m.body.velocity);
+    });
+}
 
 async function handleSignUp() {
     const u = document.getElementById('su-user').value;
@@ -159,20 +178,27 @@ async function handleLogin() {
     }
 }
 
-//popup functions
-function openModal(id) { 
-    document.getElementById(id).style.display = 'block'; 
-}
-
-// Hides all ppups
-function closeModals() { 
-    document.querySelectorAll('.modal, .terminal-window').forEach(m => m.style.display = 'none'); 
+//spawns a missile at a random place
+function spawnMissile() { 
+    if (isPaused) return; 
+    let angle = Math.random() * Math.PI * 2;
+    //missile spawn away from sreen
+    let m = missiles.create(player.x + Math.cos(angle) * 800, player.y + Math.sin(angle) * 800, 'missile'); 
+    m.rotation = angle; 
+    m.setSize(10, 20); //rectangle hitbox
 }
 
 //go from the menu into the active game
 function startGame() { 
     document.getElementById('ui-layer').classList.add('hidden'); 
     isPaused = false; 
+    //spawns every 2.5 seconds
+    game.scene.scenes[0].time.addEvent({ 
+        delay: 2500, 
+        callback: spawnMissile, 
+        callbackScope: game.scene.scenes[0], 
+        loop: true 
+    }); 
 }
 
 // Open leaderboard window
@@ -187,7 +213,6 @@ async function openLeaderboard() {
         .select('username, high_score')
         .order('high_score', { ascending: false })
         .limit(6);
-
     if (error) {
         lbList.innerHTML = "SYSTEM ERROR: UNABLE TO REACH DATABASE";
     } else if (data) {
@@ -199,6 +224,16 @@ async function openLeaderboard() {
             </div>`
         ).join('');
     }
+}
+
+//popup functions
+function openModal(id) { 
+    document.getElementById(id).style.display = 'block'; 
+}
+
+// Hides all ppups
+function closeModals() { 
+    document.querySelectorAll('.modal, .terminal-window').forEach(m => m.style.display = 'none'); 
 }
 
 </script>
