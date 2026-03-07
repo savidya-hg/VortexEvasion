@@ -178,7 +178,29 @@ function startGame() {
 // Open leaderboard window
 async function openLeaderboard() { 
     openModal('leaderboard-modal');
+    const lbList = document.getElementById('lb-list');
+    lbList.innerHTML = "FETCHING DATA...";
+
+    //calls supabase table
+    const { data, error } = await _supabase
+        .from('leaderboards')
+        .select('username, high_score')
+        .order('high_score', { ascending: false })
+        .limit(6);
+
+    if (error) {
+        lbList.innerHTML = "SYSTEM ERROR: UNABLE TO REACH DATABASE";
+    } else if (data) {
+        //maps the database into the HTML list
+        lbList.innerHTML = data.map((e, i) => 
+            `<div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(0,255,0,0.2); padding:5px;">
+                <span>${i+1}. ${e.username}</span>
+                <span>${e.high_score}</span>
+            </div>`
+        ).join('');
+    }
 }
+
 </script>
 </body>
 </html>
