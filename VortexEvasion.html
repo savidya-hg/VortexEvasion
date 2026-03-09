@@ -63,38 +63,61 @@
 </head>
 <body>
 
-<div id="lb-icon" onclick="openLeaderboard()"></div>
-
 <div id="ui-layer">
     <h1 class="game-title">VORTEX<br>EVASION</h1>
     <button class="play-btn" id="main-play-btn" onclick="startGame()" disabled>LOGIN TO PLAY</button>
-</div>
 
-<div class="auth-container" id="auth-ui">
+    <div class="auth-container" id="auth-ui">
     <button class="auth-btn" onclick="openModal('signup-modal')">SIGN UP</button>
     <button class="auth-btn" onclick="openModal('login-modal')">LOGIN</button>
-</div>
+    </div>
 
-<div id="signup-modal" class="modal">
+    <div id="signup-modal" class="modal">
     <h2>ENLIST PILOT</h2>
     <input type="text" id="su-user" placeholder="NAME" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
     <input type="password" id="su-pass" placeholder="PASS" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
     <button class="auth-btn" onclick="handleSignUp()">READY</button>
     <button class="auth-btn" onclick="closeModals()">CANCEL</button>
-</div>
+    </div>
 
-<div id="login-modal" class="modal">
+    <div id="login-modal" class="modal">
     <h2>IDENTIFY</h2>
     <input type="text" id="li-user" placeholder="NAME" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
     <input type="password" id="li-pass" placeholder="PASS" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
     <button class="auth-btn" onclick="handleLogin()">ENTER</button>
     <button class="auth-btn" onclick="closeModals()">CANCEL</button>
-</div>
+    </div>
 
-<div id="leaderboard-modal" class="terminal-window">
+    <div id="lb-icon" onclick="openLeaderboard()"></div>
+
+    <div id="leaderboard-modal" class="terminal-window">
     <h2 style="color: var(--gold);">HALL OF FAME</h2>
     <div id="lb-list" style="color: var(--neon-green); font-size: 0.8rem; margin: 20px 0;">?</div>
     <button class="auth-btn" onclick="closeModals()">BACK</button>
+    </div>
+</div>
+
+
+
+<div id="health-container" style="position: absolute; top: 20px; right: 20px; display: none; gap: 8px; z-index: 160;"></div>
+
+<div id="puzzle-ui" class="terminal-window" style="display:none;">
+    <h1 style="color: #ff3333; font-size: 1rem;">SYSTEM BREACH</h1>
+    <img id="puzzle-img" style="width: 280px; margin: 20px 0; border: 4px solid var(--neon-green); image-rendering: pixelated;"><br>
+    <input type="number" id="ans-input" placeholder="?" style="background:#000; color:#0f0; border:1px solid #0f0; padding:10px; text-align:center;"><br>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+        <button class="auth-btn" onclick="finishGame()">FAIL</button>
+        <button class="auth-btn" onclick="checkAnswer()">FIX</button>
+    </div>
+</div>
+
+<div id="score-ui" style="position: absolute; top: 25px; left: 25px; color: var(--neon-green); font-size: 1rem; z-index: 160; display: none;">SCORE: 0</div>
+
+<div id="game-over-ui" class="terminal-window">
+    <h1 style="color: #ff0000; font-size: 1.5rem;">TERMINATED</h1>
+    <p id="final-score-text" style="font-size: 1rem; color: #fff; margin: 20px 0;"></p>
+    <p id="new-record-msg" style="color: var(--gold); font-size: 0.8rem; display:none;">NEW RECORD SET</p>
+    <button class="auth-btn" style="font-size: 1rem; margin-top:20px;" onclick="location.reload()">RESPAWN</button>
 </div>
 
 <script>
@@ -104,6 +127,12 @@ const _supabase = supabase.createClient('https://dqbtnmkiiwldlvrpaupj.supabase.c
 let currentUser = null;
 let isPaused = true; //prevents game from running in the menu
 let missiles;
+let score = 0;
+let userHighScore = 0; //fetched in login
+let health = 5; 
+let currentSolution = null; 
+let hasUsedRevive = false;
+const SHIP_IMG = 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Space-Invaders-ship.png';
 
 /*phaser eng config*/
 const config = { 
@@ -118,6 +147,10 @@ const game = new Phaser.Game(config);
 /*assets*/
 function preload() {
     this.load.image('ship', 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Space-Invaders-ship.png');
+    let graphics = this.make.graphics();
+    graphics.fillStyle(0xff3333).fillRect(2, 0, 6, 20);
+    graphics.generateTexture('missile', 10, 20);
+    graphics.destroy();
 }
 
 /*create game UI*/
@@ -128,6 +161,9 @@ function create() {
 
     //missile groups
     missiles = this.physics.add.group();
+
+    //check if missile hit player
+    this.physics.add.overlap(player, missiles, handleCollision, null, this);
 
     //missile to missile explosion
     this.physics.add.collider(missiles, missiles, (m1, m2) => {
@@ -143,6 +179,7 @@ function update() {
     player.rotation = Phaser.Math.Angle.RotateTo(player.rotation, targetAngle, 0.12);
 
     if (isPaused) return; //stop enemies if menu is open
+    let moveDir = player.rotation - Math.PI/2, speed = 5.3;//ship movement
 
     //missile Tracking
     missiles.getChildren().forEach(m => {
@@ -152,7 +189,11 @@ function update() {
         m.rotation = Phaser.Math.Angle.RotateTo(m.rotation, angle, 0.01); 
         //move missile forward
         this.physics.velocityFromRotation(m.rotation - Math.PI/2, 480, m.body.velocity);
+        m.x -= Math.cos(moveDir) * speed; m.y -= Math.sin(moveDir) * speed;
     });
+
+    score++;
+    document.getElementById('score-ui').innerText = "SCORE: " + score;
 }
 
 async function handleSignUp() {
@@ -188,10 +229,61 @@ function spawnMissile() {
     m.setSize(10, 20); //rectangle hitbox
 }
 
+//heart api
+async function triggerApiPuzzle() {
+    document.getElementById('puzzle-ui').style.display = 'block';
+    try { 
+        const res = await fetch('https://marcconrad.com/uob/heart/api.php');
+        const data = await res.json(); 
+        currentSolution = data.solution; 
+        document.getElementById('puzzle-img').src = data.question.replace('http://', 'https://'); 
+    } catch (e) { finishGame(); }
+}
+
+//dmg handling and triggering heart api
+function handleCollision(p, m) {
+    m.destroy(); 
+    health--; 
+    updateHealthUI();
+    this.cameras.main.shake(120, 0.015);
+
+    if (health <= 0) { 
+        isPaused = true; 
+        this.physics.pause(); 
+        if (!hasUsedRevive) triggerApiPuzzle(); 
+        else finishGame(); 
+    }
+}
+
+//check heart api answer
+window.checkAnswer = function() {
+    if (parseInt(document.getElementById('ans-input').value) === currentSolution) {
+        hasUsedRevive = true; 
+        document.getElementById('puzzle-ui').style.display = 'none';
+        isPaused = false; 
+        game.scene.scenes[0].physics.resume(); 
+        health = 3; // Revive with 3 HP
+        updateHealthUI(); 
+        missiles.clear(true, true);
+    } else { finishGame(); }
+}
+
+//when ans is correct more health
+function updateHealthUI() {
+    const container = document.getElementById('health-container');
+    container.innerHTML = '';
+    for(let i=0; i<health; i++) {
+        container.innerHTML += `<img src="${SHIP_IMG}" style="width:24px; filter: drop-shadow(0 0 5px var(--neon-green));">`;
+    }
+}
+
 //go from the menu into the active game
 function startGame() { 
     document.getElementById('ui-layer').classList.add('hidden'); 
+    document.getElementById('health-container').style.display = 'flex';
+    document.getElementById('score-ui').style.display = 'block';
     isPaused = false; 
+    updateHealthUI();
     //spawns every 2.5 seconds
     game.scene.scenes[0].time.addEvent({ 
         delay: 2500, 
@@ -199,6 +291,25 @@ function startGame() {
         callbackScope: game.scene.scenes[0], 
         loop: true 
     }); 
+}
+
+async function finishGame() {
+    isPaused = true;
+    game.scene.scenes[0].physics.pause();
+    
+    document.getElementById('puzzle-ui').style.display = 'none'; 
+    document.getElementById('health-container').style.display = 'none';
+    document.getElementById('score-ui').style.display = 'none';
+
+    // Check if player set a personal best
+    if (score > userHighScore) { 
+        document.getElementById('new-record-msg').style.display = 'block'; 
+        // Update Supabase
+        await _supabase.from('leaderboards').update({ high_score: score }).eq('username', currentUser); 
+    }
+    
+    document.getElementById('final-score-text').innerText = "FINAL SCORE: " + score; 
+    document.getElementById('game-over-ui').style.display = 'block';
 }
 
 // Open leaderboard window
