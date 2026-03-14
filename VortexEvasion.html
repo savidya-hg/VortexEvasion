@@ -5,220 +5,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    
-    <style>
-        /*CSS neon-theming*/
-        :root {
-            --neon-green: #00ff00; 
-            --menu-font: 'Press Start 2P', cursive; 
-            --gold: #ffd700; 
-            --bg-glass: rgba(0, 15, 0, 0.95); 
-        }
-        
-        body {
-            margin: 0;
-            background: #000;
-            overflow: hidden;
-            font-family: var(--menu-font);
-            cursor: crosshair;
-        }
-        
-        /*UI covers the game until player hits play*/
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 100; display: flex; flex-direction: column; align-items: center; 
-            background: rgba(0, 0, 0, 0.4);
-        }
-        
-        .game-title {
-            margin-top: 80px;
-            font-size: 2.2rem;
-            color: var(--neon-green);
-            text-align: center;
-            line-height: 1.5;
-        }
-        
-        /*login/signup*/
-        .auth-container {
-            position: absolute;
-            top: 20px; right: 20px;
-            display: flex; gap: 15px;
-            z-index: 150;
-            align-items: center;
-        }
-        
-        .auth-btn { 
-            background: rgba(0,0,0,0.7);
-            color: #fff;
-            border: 2px solid var(--neon-green); 
-            padding: 8px 12px;
-            font-family: var(--menu-font);
-            font-size: 0.7rem; 
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: 0.3s;
-        }
-        .auth-btn:hover:not(:disabled) {
-            background: var(--neon-green);
-            color: #000;
-            box-shadow: 0 0 15px var(--neon-green);
-        }
-        
-        #user-display {
-            color: #fff;
-            font-size: 0.8rem;
-        }
-        #personal-best {
-            color: var(--neon-green);
-            font-size: 0.8rem;
-        }
-
-        /*leaderboard icon*/
-        #lb-icon { 
-            position: absolute; 
-            top: 20px; 
-            left: 20px; 
-            z-index: 150; 
-            cursor: pointer; 
-            width: 50px; 
-            height: 50px; 
-            background: url('https://cdn-icons-png.flaticon.com/128/347/347837.png') no-repeat center;
-            background-size: contain;
-            color: gold ;
-            filter: brightness(0) invert(1)
-                drop-shadow(0 0 3px var(--gold))
-                drop-shadow(0 0 10px #ff9900);
-            transition: 0.3s;
-        }
-
-        #lb-icon:hover {
-            transform: scale(1.1);
-            filter: brightness(0) invert(1)
-            drop-shadow(0 0 3px var(--gold))
-            drop-shadow(0 0 10px #ff9900);
-        }
-        
-        /*play btn disabled by default until logged in*/
-        .play-btn { 
-            background: transparent;
-            color: var(--neon-green);
-            border: 4px solid var(--neon-green); 
-            padding: 20px 40px;
-            font-size: 1.2rem;
-            font-family: var(--menu-font); 
-            cursor: pointer;
-            text-transform: uppercase;
-            margin-top: auto;
-            margin-bottom: 120px;
-        }
-
-        /*opups*/
-        .modal, .terminal-window { 
-            display: none;
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%); 
-            background: var(--bg-glass);
-            border: 4px solid var(--neon-green);
-            padding: 30px; 
-            z-index: 200;
-            text-align: center;
-            min-width: 400px;
-        }
-        .modal h2 {
-            font-size: 1rem;
-            color: #fff;
-            margin-bottom: 20px;
-        }
-        .modal input {
-            display: block;
-            margin: 15px auto;
-            background: #000;
-            color: var(--neon-green);
-            border: 2px solid var(--neon-green);
-            padding: 12px;
-            font-family: var(--menu-font);
-            font-size: 0.8rem; width: 80%;
-            text-align: center;
-        }
-
-        .lb-entry {
-            display:flex;
-            justify-content: space-between;
-            border-bottom: 2px solid rgba(0, 255, 0, 0.2);
-            font-size: 0.7rem; padding: 10px 0;
-            color: var(--neon-green);
-        }
-
-        #health-container {
-            position: absolute;
-            top: 20px; right: 20px;
-            display: none; gap: 8px;
-            z-index: 160;
-        }
-        .health-ship {
-            width: 50px;
-            height: auto;
-            filter: drop-shadow(0 0 5px var(--neon-green));
-        }
-
-        #fact-api-container {
-            position: absolute; 
-            top: 20px;
-            left: 105px;
-            z-index: 150; 
-            text-align: left;
-        }
-
-        #fact-api-icon {
-            z-index: 150;
-            cursor: pointer; 
-            width: 55px;
-            height: 55px; 
-            background: url('https://cdn-icons-png.flaticon.com/128/7734/7734270.png') no-repeat center;
-            background-size: contain;
-            filter: brightness(0) invert(1)
-                    drop-shadow(0 0 3px var(--neon-green))
-                    drop-shadow(0 0 10px #1bf752);
-            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        #fact-api-icon:hover {
-            transform: scale(1.1) rotate(-5deg);
-            filter: brightness(0) invert(1)
-                    drop-shadow(0 0 8px var(--neon-green))
-                    drop-shadow(0 0 15px #1bf752);
-        }
-
-        #fact-popup {
-            display: none;
-            position: absolute;
-            top: 60px;
-            left: 0;
-            background: var(--bg-glass);
-            border: 2px solid var(--neon-green);
-            padding: 15px;
-            width: 350px;
-            color: #fff;
-            font-size: 0.6rem;
-            line-height: 1.4;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-            z-index: 200;
-        }
-        #fact-popup h2{
-            font-size: 1rem;
-            color: var(--neon-green);
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- menu -->
 <div id="ui-layer">
     <h1 class="game-title">VORTEX<br>EVASION</h1>
     <button class="play-btn" id="main-play-btn" onclick="startGame()" disabled>LOGIN TO PLAY</button>
@@ -236,17 +27,17 @@
 
     <div id="signup-modal" class="modal">
         <h2>ENLIST PILOT</h2>
-        <input type="text" id="su-user" placeholder="NAME" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
-        <input type="password" id="su-pass" placeholder="PASS" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
-        <button class="auth-btn" onclick="handleSignUp()">READY</button>
+        <input type="text" id="su-user" placeholder="NAME">
+        <input type="password" id="su-pass" placeholder="PASS">
+        <button class="auth-btn" onclick="AuthManager.handleSignUp()">READY</button>
         <button class="auth-btn" onclick="closeModals()">CANCEL</button>
     </div>
 
     <div id="login-modal" class="modal">
         <h2>IDENTIFY</h2>
-        <input type="text" id="li-user" placeholder="NAME" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
-        <input type="password" id="li-pass" placeholder="PASS" style="display:block; margin:10px auto; background:#000; color:var(--neon-green); border:1px solid var(--neon-green); padding:10px;">
-        <button class="auth-btn" onclick="handleLogin()">ENTER</button>
+        <input type="text" id="li-user" placeholder="NAME">
+        <input type="password" id="li-pass" placeholder="PASS">
+        <button class="auth-btn" onclick="AuthManager.handleLogin()">ENTER</button>
         <button class="auth-btn" onclick="closeModals()">CANCEL</button>
     </div>
 
@@ -254,9 +45,8 @@
         <div id="fact-api-icon" onclick="fetchFact()"></div>
         <div id="fact-popup">
             <h2>FUN FACT</h2>
-            <div id="fact-text">LOADING...</div>
-            <br>
-            <div onclick="this.parentElement.style.display='none'" style="color:var(--neon-green); margin-top:10px; cursor:pointer; text-align: center;">[CLOSE]</div>
+            <div id="fact-text">LOADING...</div><br>
+            <div onclick="this.parentElement.style.display='none'" style="color:var(--neon-green); cursor:pointer; text-align: center;">[CLOSE]</div>
         </div>
     </div>
 
@@ -269,361 +59,29 @@
     </div>
 </div>
 
-    <div id="health-container"></div>
+<!-- game -->
+<div id="health-container"></div>
+<div id="score-ui" style="position: absolute; top: 25px; left: 25px; color: var(--neon-green); font-size: 1rem; z-index: 160; display: none;">SCORE: 0</div>
 
-    <div id="puzzle-ui" class="terminal-window" style="display:none;">
-        <h1 style="color: #ff3333; font-size: 1rem;">SYSTEM BREACH</h1>
-        <img id="puzzle-img" style="width: 280px; margin: 20px 0; border: 4px solid var(--neon-green); image-rendering: pixelated;"><br>
-        <input type="number" id="ans-input" placeholder="?" style="background:#000; color:#0f0; border:1px solid #0f0; padding:10px; text-align:center;"><br>
-        <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-            <button class="auth-btn" onclick="finishGame()">FAIL</button>
-            <button class="auth-btn" onclick="checkAnswer()">FIX</button>
-        </div>
+<div id="puzzle-ui" class="terminal-window" style="display:none;">
+    <h1 style="color: #ff3333; font-size: 1rem;">SYSTEM BREACH</h1>
+    <img id="puzzle-img" style="width: 280px; margin: 20px 0; border: 4px solid var(--neon-green);"><br>
+    <input type="number" id="ans-input" placeholder="?"><br>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+        <button class="auth-btn" onclick="finishGame()">FAIL</button>
+        <button class="auth-btn" onclick="checkAnswer()">FIX</button>
     </div>
+</div>
 
-    <div id="score-ui" style="position: absolute; top: 25px; left: 25px; color: var(--neon-green); font-size: 1rem; z-index: 160; display: none;">SCORE: 0</div>
+<div id="game-over-ui" class="terminal-window" style="display:none;">
+    <h1 style="color: #ff0000; font-size: 1.5rem;">TERMINATED</h1>
+    <p id="final-score-text"></p>
+    <p id="new-record-msg" style="color: var(--gold); display:none;">NEW RECORD SET</p>
+    <button class="auth-btn" onclick="location.reload()">RESPAWN</button>
+</div>
 
-    <div id="game-over-ui" class="terminal-window">
-        <h1 style="color: #ff0000; font-size: 1.5rem;">TERMINATED</h1>
-        <p id="final-score-text" style="font-size: 1rem; color: #fff; margin: 20px 0;"></p>
-        <p id="new-record-msg" style="color: var(--gold); font-size: 0.8rem; display:none;">NEW RECORD SET</p>
-        <button class="auth-btn" style="font-size: 1rem; margin-top:20px;" onclick="location.reload()">RESPAWN</button>
-    </div>
+<script src="database.js"></script>
+<script src="game.js"></script>
 
-<script>
-
-//databse connection//
-const _supabase = supabase.createClient('https://dqbtnmkiiwldlvrpaupj.supabase.co', 'sb_publishable_rMEMOFO_vVHyYdpjJQSqxg_djkgWVVT');
-let currentUser = localStorage.getItem('vortex_user');
-let isPaused = true; //prevents game from running in the menu
-let missiles;
-let score = 0;
-let userHighScore = 0; //fetched in login
-let health = 5; 
-let currentSolution = null; 
-let hasUsedRevive = false;
-const SHIP_IMG = 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Space-Invaders-ship.png';
-
-window.onload = async () => { 
-    if(currentUser) {
-        const { data } = await _supabase.from('leaderboards').select('high_score').eq('username', currentUser).maybeSingle();
-        if(data) { 
-            userHighScore = data.high_score; 
-            updateUIForLogin();
-        }
-    }
-};
-
-/*phaser eng config*/
-const config = { 
-    type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    physics: { default: 'arcade', arcade: { debug: false } }, 
-    scene: { preload, create, update }
-};
-const game = new Phaser.Game(config);
-let player, scoreText;
-
-/*assets*/
-function preload() {
-    this.load.image('ship', 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Space-Invaders-ship.png');
-    this.load.spritesheet('boom', 'https://labs.phaser.io/assets/sprites/explosion.png', { frameWidth: 64, frameHeight: 64 });
-    let graphics = this.make.graphics();
-    graphics.fillStyle(0xff3333).fillRect(2, 0, 6, 20);
-    graphics.generateTexture('missile', 10, 20);
-    graphics.destroy();
-}
-
-/*create game UI*/
-function create() {
-    //hitbox
-    player = this.physics.add.sprite(config.width/2, config.height/2, 'ship').setScale(0.06).setDepth(10);
-    player.setSize(player.width - 40, player.height - 40).setOffset(30, 0); 
-
-    //explosion
-    this.anims.create({
-        key: 'explode',
-        frames: this.anims.generateFrameNumbers('boom', { start: 0, end: 23 }),
-        frameRate: 60,
-        hideOnComplete: true
-    });
-
-    //missile groups
-    missiles = this.physics.add.group();
-    //check if missile hit player
-    this.physics.add.overlap(player, missiles, handleCollision, null, this);
-    //missile to missile explosion
-    this.physics.add.collider(missiles, missiles, (m1, m2) => {
-        triggerExplosion(m1.x, m1.y); m1.destroy();
-        m2.destroy();
-        score += 500;
-    }, null, this);
-}
-
-function update() {
-    //ship follows cursor
-    let pointer = this.input.activePointer;
-    let targetAngle = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y) + Math.PI/2;
-    player.rotation = Phaser.Math.Angle.RotateTo(player.rotation, targetAngle, 0.12);
-
-    if (isPaused) return; //stop enemies if menu is open
-    let moveDir = player.rotation - Math.PI/2, speed = 5.3;//ship movement
-
-    //missile Tracking
-    missiles.getChildren().forEach(m => {
-        //calculate angle to the player
-        let angle = Phaser.Math.Angle.Between(m.x, m.y, player.x, player.y) + Math.PI/2;
-        //missile rotation
-        m.rotation = Phaser.Math.Angle.RotateTo(m.rotation, angle, 0.01); 
-        //move missile forward
-        this.physics.velocityFromRotation(m.rotation - Math.PI/2, 480, m.body.velocity);
-        m.x -= Math.cos(moveDir) * speed; m.y -= Math.sin(moveDir) * speed;
-    });
-
-    score++;
-    document.getElementById('score-ui').innerText = "SCORE: " + score;
-}
-
-async function handleSignUp() {
-    const u = document.getElementById('su-user').value;
-    const p = document.getElementById('su-pass').value;
-    if (!u || !p) return alert("FIELDS REQUIRED");
-
-    //check username
-    const { data: existing } = await _supabase
-        .from('leaderboards')
-        .select('username')
-        .eq('username', u)
-        .maybeSingle();
-
-    if (existing) {
-        alert("PILOT IDENTITY ALREADY TAKEN");
-        return;
-    }
-    //add to databse
-    const { error } = await _supabase.from('leaderboards').insert([{
-        username: u, 
-        password: p, 
-        high_score: 0
-    }]);
-    if (error) {
-        alert("ENLISTMENT FAILED: " + error.message);
-        return;
-    }
-    
-    //auto login
-    currentUser = u; 
-    userHighScore = 0; 
-    localStorage.setItem('vortex_user', u);
-    updateUIForLogin(); 
-    closeModals();
-}
-
-async function handleLogin() {
-    const u = document.getElementById('li-user').value;
-    const p = document.getElementById('li-pass').value;
-    const { data } = await _supabase.from('leaderboards').select('*').eq('username', u).eq('password', p).maybeSingle();
-    
-    if(data) {
-        currentUser = u; 
-        userHighScore = data.high_score; 
-        localStorage.setItem('vortex_user', u);
-        
-        updateUIForLogin();
-        closeModals();
-    } else {
-        alert("ACCESS DENIED");
-    }
-}
-
-function logout() {
-    localStorage.removeItem('vortex_user');
-    location.reload();
-}
-
-function updateUIForLogin() {
-    //hide Login/Signup
-    document.getElementById('auth-ui').classList.add('hidden');
-    document.getElementById('logout-ui').classList.remove('hidden');
-    //show bestsccore and logout
-    document.getElementById('user-display').innerText = currentUser.toUpperCase();
-    document.getElementById('personal-best').innerText = "BEST:" + userHighScore;
-    //update playbttn
-    const playBtn = document.getElementById('main-play-btn');
-    playBtn.disabled = false;
-    playBtn.innerText = "PLAY: " + currentUser.toUpperCase();
-}
-
-//spawns a missile at a random place
-function spawnMissile() { 
-    if (isPaused) return; 
-    let angle = Math.random() * Math.PI * 2;
-    //missile spawn away from sreen
-    let m = missiles.create(player.x + Math.cos(angle) * 800, player.y + Math.sin(angle) * 800, 'missile'); 
-    m.rotation = angle; 
-    m.setSize(10, 20); //rectangle hitbox
-}
-
-//dmg handling and triggering heart api
-function handleCollision(p, m) {
-    triggerExplosion(m.x, m.y);
-    m.destroy(); 
-    health--; 
-    updateHealthUI();
-    this.cameras.main.shake(120, 0.015);
-    if (health <= 0) { 
-        isPaused = true; 
-        this.physics.pause(); 
-        if (!hasUsedRevive) triggerApiPuzzle(); 
-        else finishGame(); 
-    }
-}
-
-//heart api
-async function triggerApiPuzzle() {
-    document.getElementById('puzzle-ui').style.display = 'block';
-    try { 
-        const res = await fetch('https://marcconrad.com/uob/heart/api.php');
-        const data = await res.json(); 
-        currentSolution = data.solution; 
-        document.getElementById('puzzle-img').src = data.question.replace('http://', 'https://'); 
-    } catch (e) { finishGame(); }
-}
-
-//check heart api answer
-window.checkAnswer = function() {
-    if (parseInt(document.getElementById('ans-input').value) === currentSolution) {
-        hasUsedRevive = true; 
-        document.getElementById('puzzle-ui').style.display = 'none';
-        isPaused = false; 
-        game.scene.scenes[0].physics.resume(); 
-        health = 3; // Revive with 3 HP
-        updateHealthUI(); 
-        missiles.clear(true, true);
-    } else { finishGame(); }
-}
-
-//when ans is correct more health
-function updateHealthUI() {
-    const container = document.getElementById('health-container');
-    container.innerHTML = '';
-    for(let i=0; i<health; i++) {
-        container.innerHTML += `<img src="${SHIP_IMG}" style="width:24px; filter: drop-shadow(0 0 5px var(--neon-green));">`;
-    }
-}
-
-//go from the menu into the active game
-function startGame() { 
-    document.getElementById('ui-layer').classList.add('hidden'); 
-    document.getElementById('logout-ui').classList.add('hidden'); 
-    document.getElementById('auth-ui').classList.add('hidden');
-    document.getElementById('fact-api-container').classList.add('hidden');
-    document.getElementById('health-container').style.display = 'flex';
-    document.getElementById('score-ui').style.display = 'block';
-    isPaused = false; 
-    updateHealthUI();
-    
-    game.scene.scenes[0].time.addEvent({ 
-        delay: 2500, //spawns every 2.5 seconds
-        callback: spawnMissile, 
-        callbackScope: game.scene.scenes[0], 
-        loop: true 
-    }); 
-}
-
-function triggerExplosion(x, y) {
-    let boom = game.scene.scenes[0].add.sprite(x, y, 'boom').setScale(2);
-    boom.play('explode');
-}
-
-async function finishGame() {
-    isPaused = true;
-    game.scene.scenes[0].physics.pause();
-    
-    document.getElementById('puzzle-ui').style.display = 'none'; 
-    document.getElementById('health-container').style.display = 'none';
-    document.getElementById('score-ui').style.display = 'none';
-
-    // Check if player set a personal best
-    if (score > userHighScore) { 
-        document.getElementById('new-record-msg').style.display = 'block'; 
-        // Update Supabase
-        await _supabase.from('leaderboards').update({ high_score: score }).eq('username', currentUser); 
-    }
-    
-    document.getElementById('final-score-text').innerText = "FINAL SCORE: " + score; 
-    document.getElementById('game-over-ui').style.display = 'block';
-}
-
-// Open leaderboard window
-async function openLeaderboard() { 
-    openModal('leaderboard-modal');
-    const lbList = document.getElementById('lb-list');
-    lbList.innerHTML = "FETCHING DATA...";
-
-    //calls supabase table
-    const { data, error } = await _supabase
-        .from('leaderboards')
-        .select('username, high_score')
-        .order('high_score', { ascending: false })
-        .limit(6);
-    if (error) {
-        lbList.innerHTML = "SYSTEM ERROR: UNABLE TO REACH DATABASE";
-    } else if (data) {
-        //maps the database into the HTML list
-        lbList.innerHTML = data.map((e, i) => 
-            `<div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(0,255,0,0.2); padding:5px;">
-                <span>${i+1}. ${e.username}</span>
-                <span>${e.high_score}</span>
-            </div>`
-        ).join('');
-    }
-}
-
-//Fact API
-async function fetchFact() {
-    const factPopup = document.getElementById('fact-popup');
-    const factText = document.getElementById('fact-text');
-    
-    // 1. Show popup and start "Linking" animation
-    factPopup.style.display = 'block';
-    factText.innerText = "LINKING TO DATASTREAM...";
-
-    try {
-        //fetch
-        const response = await fetch('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en');
-        if (!response.ok) throw new Error("Connection Lost");
-        const data = await response.json();
-        const fullFact = data.text; //stores the fact
-        //typrewriter effect
-        factText.innerText = "";
-        let i = 0;
-        const speed = 25; // Speed in milliseconds
-        function typeWriter() {
-            if (i < fullFact.length) {
-                factText.innerHTML += fullFact.charAt(i);
-                i++;
-                setTimeout(typeWriter, speed);
-            }
-        }
-        typeWriter();
-    } catch (e) {
-        console.error("Fact Error:", e);
-        factText.innerText = "API Unreachable";
-    }
-}
-
-//popup functions
-function openModal(id) { 
-    document.getElementById(id).style.display = 'block'; 
-}
-
-// Hides all ppups
-function closeModals() { 
-    document.querySelectorAll('.modal, .terminal-window').forEach(m => m.style.display = 'none'); 
-}
-
-</script>
 </body>
 </html>
