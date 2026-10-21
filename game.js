@@ -6,6 +6,7 @@ let hasUsedRevive = false;
 let currentSolution = null;
 
 let player, missiles, stars, smokeEmitter, playerTrail;
+let missileSpawnTimer = null;
 
 // ship img link
 const SHIP_IMG = 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Space-Invaders-ship.png';
@@ -82,8 +83,8 @@ function create() {
         alpha: { start: 0.7, end: 0 },
         lifespan: 1500,        
         blendMode: 'NORMAL',
-        frequency: 10,         
-        quantity: 2,           
+        frequency: 10,
+        quantity: 2,
         emitting: false
     };
 
@@ -93,7 +94,9 @@ function create() {
     // player ship setup
     player = this.physics.add.sprite(config.width/2, config.height/2, 'ship');
     player.setScale(0.06).setDepth(10);
-    player.setSize(player.width - 40, player.height - 40).setOffset(30, 0);
+    // Fairer centered hitbox (~55% of sprite dimensions)
+    player.setSize(player.width * 0.55, player.height * 0.55);
+    player.setOffset((player.width * 0.45) / 2, (player.height * 0.45) / 2);
 
     // explosion animation
     this.anims.create({ 
@@ -115,20 +118,21 @@ function create() {
 }
 
 function update() {
-    // make the ship point at the mouse cursor
+    // make the ship point at the mouse cursor with snappier rotation tracking
     let pointer = this.input.activePointer;
     let targetAngle = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y) + Math.PI/2;
-    player.rotation = Phaser.Math.Angle.RotateTo(player.rotation, targetAngle, 0.12);
+    player.rotation = Phaser.Math.Angle.RotateTo(player.rotation, targetAngle, 0.15);
 
     if (isPaused) return;
 
     let moveDir = player.rotation - Math.PI/2;
-    let speed = 5.3;
+    // Progressive player speed: responsive base speed that scales gently with progression
+    let speed = Math.min(5.5 + (score * 0.0003), 7.0);
     
     // stars movement to create the movement illusion
     stars.getChildren().forEach(star => {
-        star.x -= Math.cos(moveDir) * (speed * 0.6); 
-        star.y -= Math.sin(moveDir) * (speed * 0.6);
+        star.x -= Math.cos(moveDir) * (speed * 0.8); 
+        star.y -= Math.sin(moveDir) * (speed * 0.8);
         if (star.x < 0) star.x = config.width;
         if (star.x > config.width) star.x = 0;
         if (star.y < 0) star.y = config.height;
@@ -140,11 +144,15 @@ function update() {
     let shipTailY = player.y + Math.cos(player.rotation) * 10;
     playerTrail.emitParticleAt(shipTailX, shipTailY);
 
+    // Progressive missile difficulty: agility and speed scale with score
+    let missileTurnRate = Math.min(0.014 + (score / 350000), 0.028);
+    let missileSpeed = Math.min(320 + (score * 0.035), 480);
+
     // move and rotate each missile toward the ship
     missiles.getChildren().forEach(m => {
         let angle = Phaser.Math.Angle.Between(m.x, m.y, player.x, player.y) + Math.PI/2;
-        m.rotation = Phaser.Math.Angle.RotateTo(m.rotation, angle, 0.025); 
-        this.physics.velocityFromRotation(m.rotation - Math.PI/2, 400, m.body.velocity);
+        m.rotation = Phaser.Math.Angle.RotateTo(m.rotation, angle, missileTurnRate); 
+        this.physics.velocityFromRotation(m.rotation - Math.PI/2, missileSpeed, m.body.velocity);
         
         m.x -= Math.cos(moveDir) * speed; 
         m.y -= Math.sin(moveDir) * speed;
@@ -184,26 +192,48 @@ function startGame() {
     isPaused = false; 
     updateHealthUI();
 
-    // launch 2 missiles at start
-    spawnMissile();
+    // launch 1 missile at start for a fair opening
     spawnMissile();
 
-    // spawn new missile every 2.5s
-    game.scene.scenes[0].time.addEvent({ 
-        delay: 2500, 
-        callback: spawnMissile, 
-        callbackScope: game.scene.scenes[0], 
-        loop: true 
-    }); 
+    // schedule dynamic missile spawns that accelerate over time
+    scheduleNextMissile();
+}
+
+function scheduleNextMissile() {
+    if (missileSpawnTimer) {
+        missileSpawnTimer.remove(false);
+        missileSpawnTimer = null;
+    }
+    if (isPaused) return;
+
+    // Spawn delay decreases dynamically as score increases (from 3000ms down to 1200ms)
+    const BASE_DELAY = 3000;
+    const MIN_DELAY = 1200;
+    const delay = Math.max(MIN_DELAY, BASE_DELAY - (score * 0.4));
+
+    const scene = game.scene.scenes[0];
+    if (!scene) return;
+
+    missileSpawnTimer = scene.time.delayedCall(delay, () => {
+        spawnMissile();
+        scheduleNextMissile();
+    });
 }
 
 function spawnMissile() {
     if (isPaused) return;
+
+    // Cap active missiles to avoid unavoidable death-flooding
+    const MAX_MISSILES = 12;
+    if (missiles.getChildren().length >= MAX_MISSILES) return;
+
     let angle = Math.random() * Math.PI * 2;
     // spawn missile out of screen
     let m = missiles.create(player.x + Math.cos(angle) * 850, player.y + Math.sin(angle) * 850, 'missile');
     m.rotation = angle;
-    m.setSize(12, 24); 
+    // Accurate missile body hitbox (exclude decorative fins)
+    m.setSize(8, 20);
+    m.setOffset(2, 2);
 }
 
 function handleCollision(p, m) {
@@ -211,7 +241,7 @@ function handleCollision(p, m) {
     triggerExplosion(m.x, m.y);
     m.destroy(); 
     
-    // take dmg and shake the screen
+    // take dmg and screen shake
     health--; 
     updateHealthUI();
     this.cameras.main.shake(120, 0.015);
@@ -219,6 +249,10 @@ function handleCollision(p, m) {
     // check if ded
     if (health <= 0) { 
         isPaused = true; 
+        if (missileSpawnTimer) {
+            missileSpawnTimer.remove(false);
+            missileSpawnTimer = null;
+        }
         this.physics.pause(); 
         // check if heart api is used
         if (!hasUsedRevive) triggerApiPuzzle(); else finishGame(); 
@@ -254,6 +288,8 @@ function checkAnswer() {
         health = 3; 
         updateHealthUI(); 
         missiles.clear(true, true);
+        spawnMissile();
+        scheduleNextMissile();
     } else { 
         finishGame(); 
     }
@@ -261,6 +297,10 @@ function checkAnswer() {
 
 async function finishGame() {
     isPaused = true; 
+    if (missileSpawnTimer) {
+        missileSpawnTimer.remove(false);
+        missileSpawnTimer = null;
+    }
     game.scene.scenes[0].physics.pause();
     
     document.getElementById('puzzle-ui').style.display = 'none';
