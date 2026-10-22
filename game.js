@@ -5,6 +5,9 @@ let health = 5;
 let hasUsedRevive = false;
 let currentSolution = null;
 
+let pilotName = localStorage.getItem('vortex_pilot') || 'PILOT';
+let highScore = parseInt(localStorage.getItem('vortex_highscore'), 10) || 0;
+
 let player, missiles, stars, smokeEmitter, playerTrail;
 let missileSpawnTimer = null;
 
@@ -25,7 +28,7 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// --- game  functions
+// --- game functions
 
 function preload() {
     this.load.image('ship', SHIP_IMG);
@@ -114,6 +117,7 @@ function create() {
         m1.destroy(); 
         m2.destroy();
         score += 500;
+        updateScoreUI();
     }, null, this);
 }
 
@@ -173,17 +177,23 @@ function update() {
 
     // increase score
     score++;
-    document.getElementById('score-ui').innerText = "SCORE: " + score;
+    updateScoreUI();
 }
 
 // --- game logic
 
 function startGame() { 
+    // retrieve pilot name from input or fallback to PILOT
+    const input = document.getElementById('pilot-name');
+    if (input && input.value.trim()) {
+        pilotName = input.value.trim().toUpperCase();
+    } else {
+        pilotName = 'PILOT';
+    }
+    localStorage.setItem('vortex_pilot', pilotName);
+
     // hide menu elements
     document.getElementById('ui-layer').classList.add('hidden'); 
-    document.getElementById('logout-ui').classList.add('hidden');
-    document.getElementById('auth-ui').classList.add('hidden');
-    document.getElementById('fact-api-container').classList.add('hidden');
     
     // show game hud
     document.getElementById('health-container').style.display = 'flex';
@@ -191,12 +201,21 @@ function startGame() {
     
     isPaused = false; 
     updateHealthUI();
+    updateScoreUI();
 
     // launch 1 missile at start for a fair opening
     spawnMissile();
 
     // schedule dynamic missile spawns that accelerate over time
     scheduleNextMissile();
+}
+
+function updateScoreUI() {
+    const scoreEl = document.getElementById('score-ui');
+    if (scoreEl) {
+        const displayHi = Math.max(score, highScore);
+        scoreEl.innerHTML = `HI: ${displayHi} &nbsp; SCORE: ${score}`;
+    }
 }
 
 function scheduleNextMissile() {
@@ -306,26 +325,21 @@ async function finishGame() {
     document.getElementById('puzzle-ui').style.display = 'none';
     document.getElementById('health-container').style.display = 'none';
     document.getElementById('score-ui').style.display = 'none';
-    document.getElementById('final-score-text').innerText = "FINAL SCORE: " + score; 
+    
+    document.getElementById('final-pilot-text').innerText = `PILOT: ${pilotName}`;
+    document.getElementById('final-score-text').innerText = `SCORE: ${score}`;
 
-    // update high score
-    if (score > userHighScore) {
+    // update high score in localStorage
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('vortex_highscore', highScore.toString());
         document.getElementById('new-record-msg').style.display = 'block';
-        await _supabase.from('leaderboards').update({ high_score: score }).eq('username', currentUser);
+    } else {
+        document.getElementById('new-record-msg').style.display = 'none';
     }
+    document.getElementById('high-score-text').innerText = `BEST: ${highScore}`;
     
     document.getElementById('game-over-ui').style.display = 'block';
-}
-
-function updateUIForLogin() {
-    document.getElementById('auth-ui').classList.add('hidden');
-    document.getElementById('logout-ui').classList.remove('hidden');
-    document.getElementById('user-display').innerText = currentUser.toUpperCase();
-    document.getElementById('personal-best').innerText = "BEST:" + userHighScore;
-    
-    const playBtn = document.getElementById('main-play-btn');
-    playBtn.disabled = false;
-    playBtn.innerText = "PLAY: " + currentUser.toUpperCase();
 }
 
 function updateHealthUI() {
@@ -364,10 +378,31 @@ async function fetchFact() {
     }
 }
 
-function openModal(id) {
-    document.getElementById(id).style.display = 'block';
-}
+// Initialize on DOM load
+window.addEventListener('DOMContentLoaded', () => {
+    const pilotInput = document.getElementById('pilot-name');
+    if (pilotInput) {
+        pilotInput.value = pilotName;
+        pilotInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                startGame();
+            }
+        });
+    }
 
-function closeModals() {
-    document.querySelectorAll('.modal, .terminal-window').forEach(m => m.style.display = 'none');
-}
+    // Spacebar to launch if in menu and not typing in input
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && isPaused && document.activeElement !== pilotInput) {
+            const uiLayer = document.getElementById('ui-layer');
+            if (uiLayer && !uiLayer.classList.contains('hidden')) {
+                e.preventDefault();
+                startGame();
+            }
+        }
+    });
+
+    const menuHi = document.getElementById('menu-high-score');
+    if (menuHi) {
+        menuHi.innerText = `HI: ${highScore}`;
+    }
+});

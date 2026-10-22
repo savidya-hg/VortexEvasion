@@ -1,87 +1,63 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vortex Evasion</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <!-- menu -->
-<div id="ui-layer">
-    <h1 class="game-title">VORTEX<br>EVASION</h1>
-    <button class="play-btn" id="main-play-btn" onclick="startGame()" disabled>LOGIN TO PLAY</button>
+    <div id="ui-layer">
+        <div id="menu-high-score">HI: 0</div>
 
-    <div class="auth-container" id="auth-ui">
-        <button class="auth-btn" onclick="openModal('signup-modal')">SIGN UP</button>
-        <button class="auth-btn" onclick="openModal('login-modal')">LOGIN</button>
-    </div>
+        <h1 class="game-title">VORTEX<br>EVASION</h1>
 
-    <div class="auth-container hidden" id="logout-ui">
-        <span id="personal-best">BEST:0</span>
-        <span id="user-display"></span>
-        <button class="auth-btn" onclick="logout()">EXIT</button>
-    </div>
+        <div class="pilot-container">
+            <label class="pilot-label" for="pilot-name">PILOT CALLSIGN</label>
+            <input type="text" id="pilot-name" class="pilot-input" maxlength="12" placeholder="PILOT" autocomplete="off" spellcheck="false">
+        </div>
 
-    <div id="signup-modal" class="modal">
-        <h2>ENLIST PILOT</h2>
-        <input type="text" id="su-user" placeholder="NAME">
-        <input type="password" id="su-pass" placeholder="PASS">
-        <button class="auth-btn" onclick="AuthManager.handleSignUp()">READY</button>
-        <button class="auth-btn" onclick="closeModals()">CANCEL</button>
-    </div>
+        <button class="play-btn" id="main-play-btn" onclick="startGame()">PLAY</button>
 
-    <div id="login-modal" class="modal">
-        <h2>IDENTIFY</h2>
-        <input type="text" id="li-user" placeholder="NAME">
-        <input type="password" id="li-pass" placeholder="PASS">
-        <button class="auth-btn" onclick="AuthManager.handleLogin()">ENTER</button>
-        <button class="auth-btn" onclick="closeModals()">CANCEL</button>
-    </div>
-
-    <div id="fact-api-container">
-        <div id="fact-api-icon" onclick="fetchFact()"></div>
-        <div id="fact-popup">
-            <h2>FUN FACT</h2>
-            <div id="fact-text">LOADING...</div><br>
-            <div onclick="this.parentElement.style.display='none'" style="color:var(--neon-green); cursor:pointer; text-align: center;">[CLOSE]</div>
+        <div id="fact-api-container">
+            <div id="fact-api-icon" onclick="fetchFact()" title="Fun Fact"></div>
+            <div id="fact-popup">
+                <h2>FUN FACT</h2>
+                <div id="fact-text">LOADING...</div><br>
+                <div onclick="this.parentElement.style.display='none'" style="color:var(--neon-green); cursor:pointer; text-align: center;">[CLOSE]</div>
+            </div>
         </div>
     </div>
 
-    <div id="lb-icon" onclick="openLeaderboard()"></div>
+    <!-- HUD -->
+    <div id="health-container"></div>
+    <div id="score-ui">HI: 0 &nbsp; SCORE: 0</div>
 
-    <div id="leaderboard-modal" class="terminal-window">
-        <h2 style="color: var(--gold);">LEADERBOARD</h2>
-        <div id="lb-list" style="color: var(--neon-green); font-size: 0.8rem; margin: 20px 0;">?</div>
-        <button class="auth-btn" onclick="closeModals()">BACK</button>
+    <!-- puzzle revive modal -->
+    <div id="puzzle-ui" class="terminal-window" style="display:none;">
+        <h1 style="color: #ff3333; font-size: 1rem;">SYSTEM BREACH</h1>
+        <img id="puzzle-img" style="width: 280px; margin: 20px 0; border: 4px solid var(--neon-green);"><br>
+        <input type="number" id="ans-input" placeholder="?"><br>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+            <button class="auth-btn" onclick="finishGame()">FAIL</button>
+            <button class="auth-btn" onclick="checkAnswer()">FIX</button>
+        </div>
     </div>
-</div>
 
-<!-- game -->
-<div id="health-container"></div>
-<div id="score-ui" style="position: absolute; top: 25px; left: 25px; color: var(--neon-green); font-size: 1rem; z-index: 160; display: none;">SCORE: 0</div>
-
-<div id="puzzle-ui" class="terminal-window" style="display:none;">
-    <h1 style="color: #ff3333; font-size: 1rem;">SYSTEM BREACH</h1>
-    <img id="puzzle-img" style="width: 280px; margin: 20px 0; border: 4px solid var(--neon-green);"><br>
-    <input type="number" id="ans-input" placeholder="?"><br>
-    <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
-        <button class="auth-btn" onclick="finishGame()">FAIL</button>
-        <button class="auth-btn" onclick="checkAnswer()">FIX</button>
+    <!-- game over screen -->
+    <div id="game-over-ui" class="terminal-window" style="display:none;">
+        <h1 style="color: #ff0000; font-size: 1.5rem;">TERMINATED</h1>
+        <p id="final-pilot-text" style="color: #fff; font-size: 0.9rem; margin-top: 15px;"></p>
+        <p id="final-score-text" style="color: var(--neon-green); font-size: 1rem; margin: 10px 0;"></p>
+        <p id="high-score-text" style="color: var(--gold); font-size: 0.8rem; margin-bottom: 15px;"></p>
+        <p id="new-record-msg" style="color: var(--gold); display:none;">★ NEW RECORD SET ★</p>
+        <button class="auth-btn" onclick="location.reload()">RESPAWN</button>
     </div>
-</div>
 
-<div id="game-over-ui" class="terminal-window" style="display:none;">
-    <h1 style="color: #ff0000; font-size: 1.5rem;">TERMINATED</h1>
-    <p id="final-score-text"></p>
-    <p id="new-record-msg" style="color: var(--gold); display:none;">NEW RECORD SET</p>
-    <button class="auth-btn" onclick="location.reload()">RESPAWN</button>
-</div>
-
-<script src="database.js"></script>
-<script src="game.js"></script>
-
+    <script src="game.js"></script>
 </body>
 </html>
